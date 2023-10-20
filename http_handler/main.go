@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -16,8 +18,15 @@ type MyEvent struct {
 }
 
 type MyResponse struct {
-	BucketName string   `json:"bucket"`
-	Contents   []string `json:"contents"`
+	IsBase64Encoded bool              `json:"isBase64Encoded"`
+	StatusCode      string            `json:"statusCode"`
+	Headers         map[string]string `json:"headers"`
+	Body            string            `json:"body"`
+}
+
+type S3Response struct {
+	Bucket  string   `json:"bucket"`
+	Objects []string `json:"objects"`
 }
 
 var svc *s3.Client
@@ -32,18 +41,40 @@ func init() {
 	svc = s3.NewFromConfig(cfg)
 }
 
-func (r *MyResponse) String() string {
-	return fmt.Sprintf("{\"bucket\": \"%s\", \"contents\": %s}", r.BucketName, r.Contents)
-}
+// func (r *MyResponse) String() string {
+// 	return fmt.Sprintf("{\"bucket\": \"%s\", \"contents\": %s}", r.BucketName, r.Contents)
+// }
 
-func HandleRequest(ctx context.Context, event *MyEvent) (*MyResponse, error) {
+func HandleRequest(ctx context.Context, event *events.APIGatewayProxyRequest) (*MyResponse, error) {
 	if event == nil {
 		return nil, fmt.Errorf("received nil event")
 	}
-	fmt.Printf("Event: %+v", event)
-	contents, err := ListBucket(ctx, event.BucketName)
+	event_json, err := json.Marshal(event)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("Event: %s\n", string(event_json))
 
-	return &MyResponse{BucketName: event.BucketName, Contents: contents}, err
+	var request *MyEvent
+	err = json.Unmarshal([]byte(event.Body), &request)
+	if err != nil {
+		return nil, err
+	}
+
+	contents, err := ListBucket(ctx, request.BucketName)
+	if err != nil {
+		return nil, err
+	}
+
+	response_data, err := json.Marshal(S3Response{Bucket: request.BucketName, Objects: contents})
+
+	fmt.Printf(string(response_data))
+
+	return &MyResponse{
+		IsBase64Encoded: false,
+		Headers:         make(map[string]string),
+		StatusCode:      "200",
+		Body:            string(response_data)}, err
 }
 
 func ListBucket(ctx context.Context, name string) ([]string, error) {
@@ -51,8 +82,7 @@ func ListBucket(ctx context.Context, name string) ([]string, error) {
 	var results []string
 	params := &s3.ListObjectsV2Input{Bucket: aws.String(name)}
 
-	fmt.Printf("%+v\n", svc)
-	fmt.Printf("%+v\n", *params.Bucket)
+	fmt.Printf("Reading from bucket: %+v\n", *params.Bucket)
 
 	objects, err := svc.ListObjectsV2(ctx, params)
 	fmt.Printf("%+v %v\n\n", &objects, err)

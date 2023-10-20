@@ -1,5 +1,17 @@
 package main
 
+/*
+for integration with API GAteway the following structure
+is a requirement:
+
+{
+"isBase64Encoded": true|false,
+"statusCode": httpStatusCode,
+"headers": { "headerName": "headerValue", ... },
+"body": "..."
+}
+*/
+
 import (
 	"context"
 	"encoding/json"
@@ -40,10 +52,6 @@ func init() {
 	}
 	svc = s3.NewFromConfig(cfg)
 }
-
-// func (r *MyResponse) String() string {
-// 	return fmt.Sprintf("{\"bucket\": \"%s\", \"contents\": %s}", r.BucketName, r.Contents)
-// }
 
 func HandleRequest(ctx context.Context, event *events.APIGatewayProxyRequest) (*MyResponse, error) {
 	if event == nil {

@@ -44,9 +44,10 @@ type S3Response struct {
 var svc *s3.Client
 
 func init() {
-	fmt.Println("Initializing")
+	region := "eu-central-1"
+	fmt.Printf("Initializing in region %s...", region)
 
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion("eu-central-1"))
+	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
 	if err != nil {
 		log.Fatalf("Unable to load SDK config: %v", err)
 	}

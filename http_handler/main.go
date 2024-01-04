@@ -45,7 +45,7 @@ var svc *s3.Client
 
 func init() {
 	region := "eu-central-1"
-	fmt.Printf("Initializing in region %s...", region)
+	fmt.Printf("Initializing in region %s...\n", string(region))
 
 	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
 	if err != nil {
